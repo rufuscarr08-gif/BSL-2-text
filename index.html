@@ -1,0 +1,1400 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BSL Text Lens</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --ink: #14213d;
+      --muted: #5d687c;
+      --line: #d8deea;
+      --blue: #2563eb;
+      --blue-dark: #1d4ed8;
+      --teal: #0f766e;
+      --red: #d43f3a;
+      --amber: #b7791f;
+      --shadow: 0 18px 50px rgba(20, 33, 61, .12);
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-width: 320px;
+      margin: 0;
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+    }
+
+    body {
+      min-height: 100vh;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .app-shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 390px;
+      gap: 0;
+    }
+
+    .stage {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto minmax(360px, 1fr) auto;
+      background: #101828;
+      color: #fff;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-height: 72px;
+      padding: 14px clamp(16px, 3vw, 34px);
+      border-bottom: 1px solid rgba(255, 255, 255, .12);
+      background: rgba(16, 24, 40, .86);
+      backdrop-filter: blur(14px);
+    }
+
+    .brand {
+      min-width: 0;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(1.25rem, 2vw, 1.8rem);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .brand p {
+      margin: 5px 0 0;
+      color: #cbd5e1;
+      font-size: .93rem;
+      line-height: 1.35;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 7px 11px;
+      border: 1px solid rgba(255, 255, 255, .18);
+      border-radius: 999px;
+      color: #dbeafe;
+      background: rgba(37, 99, 235, .2);
+      font-size: .86rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: #f59e0b;
+      box-shadow: 0 0 0 4px rgba(245, 158, 11, .15);
+    }
+
+    .dot.ready {
+      background: #10b981;
+      box-shadow: 0 0 0 4px rgba(16, 185, 129, .16);
+    }
+
+    .dot.error {
+      background: #ef4444;
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, .14);
+    }
+
+    .camera-wrap {
+      position: relative;
+      min-height: 360px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 30%, rgba(37, 99, 235, .22), transparent 35%),
+        linear-gradient(135deg, #111827 0%, #0f172a 100%);
+    }
+
+    video,
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
+
+    video {
+      opacity: .9;
+    }
+
+    .camera-empty {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 26px;
+      text-align: center;
+      color: #cbd5e1;
+    }
+
+    .camera-empty strong {
+      display: block;
+      margin-bottom: 8px;
+      color: #fff;
+      font-size: 1.1rem;
+    }
+
+    .live-readout {
+      position: absolute;
+      left: clamp(14px, 3vw, 30px);
+      bottom: clamp(14px, 3vw, 30px);
+      display: grid;
+      gap: 8px;
+      width: min(440px, calc(100% - 28px));
+      padding: 16px;
+      border: 1px solid rgba(255, 255, 255, .14);
+      border-radius: var(--radius);
+      background: rgba(15, 23, 42, .76);
+      backdrop-filter: blur(14px);
+      box-shadow: var(--shadow);
+    }
+
+    .letter-row {
+      display: flex;
+      align-items: end;
+      gap: 14px;
+    }
+
+    .letter {
+      display: grid;
+      width: 82px;
+      height: 82px;
+      place-items: center;
+      border-radius: var(--radius);
+      color: #eff6ff;
+      background: var(--blue);
+      font-size: 3rem;
+      font-weight: 950;
+      line-height: 1;
+    }
+
+    .confidence {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .confidence b {
+      display: block;
+      margin-bottom: 7px;
+      font-size: .86rem;
+      color: #bfdbfe;
+      text-transform: uppercase;
+    }
+
+    .meter {
+      height: 9px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .18);
+    }
+
+    .meter span {
+      display: block;
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #38bdf8, #34d399);
+      transition: width .18s ease;
+    }
+
+    .hint {
+      color: #dbeafe;
+      font-size: .92rem;
+      line-height: 1.4;
+    }
+
+    .transport {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 16px clamp(16px, 3vw, 34px);
+      border-top: 1px solid rgba(255, 255, 255, .12);
+      background: #111827;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 40px;
+      padding: 9px 13px;
+      border: 1px solid transparent;
+      border-radius: var(--radius);
+      color: #fff;
+      background: var(--blue);
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .button:hover {
+      background: var(--blue-dark);
+    }
+
+    .button.secondary {
+      border-color: rgba(255, 255, 255, .16);
+      color: #e2e8f0;
+      background: rgba(255, 255, 255, .08);
+    }
+
+    .button.secondary:hover {
+      background: rgba(255, 255, 255, .13);
+    }
+
+    .panel .button.secondary {
+      border-color: var(--line);
+      color: var(--ink);
+      background: #fff;
+    }
+
+    .panel .button.secondary:hover {
+      border-color: #b8c2d6;
+      background: #f1f5f9;
+    }
+
+    .button.danger {
+      background: var(--red);
+    }
+
+    .button.danger:hover {
+      background: #b9322e;
+    }
+
+    .button:disabled {
+      cursor: not-allowed;
+      opacity: .45;
+    }
+
+    .sidebar {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 16px;
+      padding: 18px;
+      border-left: 1px solid var(--line);
+      background: #f8fafc;
+      overflow-y: auto;
+      max-height: 100vh;
+    }
+
+    .panel {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: 0 10px 30px rgba(20, 33, 61, .06);
+    }
+
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 1rem;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .field label {
+      color: var(--muted);
+      font-size: .82rem;
+      font-weight: 850;
+      text-transform: uppercase;
+    }
+
+    textarea,
+    select,
+    input[type="number"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      color: var(--ink);
+      background: #fff;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 138px;
+      resize: vertical;
+      padding: 12px;
+      font-size: 1.05rem;
+      line-height: 1.45;
+    }
+
+    select,
+    input[type="number"] {
+      min-height: 40px;
+      padding: 8px 10px;
+    }
+
+    textarea:focus,
+    select:focus,
+    input[type="number"]:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, .13);
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #edf2f7;
+    }
+
+    .segmented button {
+      min-height: 34px;
+      border: 0;
+      border-radius: 6px;
+      color: var(--muted);
+      background: transparent;
+      font-weight: 800;
+    }
+
+    .segmented button.active {
+      color: #fff;
+      background: var(--teal);
+      box-shadow: 0 5px 14px rgba(15, 118, 110, .18);
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .trainer-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 7px;
+    }
+
+    .letter-button {
+      aspect-ratio: 1;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--ink);
+      background: #fff;
+      font-weight: 900;
+    }
+
+    .letter-button.has-samples {
+      border-color: rgba(15, 118, 110, .35);
+      color: #075e57;
+      background: #dff7f3;
+    }
+
+    .letter-button.selected {
+      border-color: var(--blue);
+      color: #fff;
+      background: var(--blue);
+    }
+
+    .fineprint {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: .82rem;
+      line-height: 1.45;
+    }
+
+    .sample-stats {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-size: .9rem;
+      line-height: 1.4;
+    }
+
+    .sample-stats b {
+      color: var(--ink);
+    }
+
+    .key-list {
+      display: grid;
+      gap: 9px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      color: var(--muted);
+      font-size: .9rem;
+      line-height: 1.42;
+    }
+
+    .key-list b {
+      color: var(--ink);
+    }
+
+    .toast {
+      min-height: 40px;
+      padding: 10px 12px;
+      border: 1px solid #f5d08a;
+      border-radius: var(--radius);
+      color: #6b3f06;
+      background: #fff7e6;
+      font-size: .9rem;
+      line-height: 1.35;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 980px) {
+      .app-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        max-height: none;
+        border-left: 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .camera-wrap {
+        min-height: 58vh;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .topbar,
+      .transport {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .status-pill {
+        justify-content: center;
+      }
+
+      .live-readout {
+        position: static;
+        width: auto;
+        margin: 14px;
+      }
+
+      .camera-wrap {
+        display: grid;
+        align-items: end;
+        min-height: 520px;
+      }
+
+      .trainer-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      .controls-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <section class="stage" aria-label="BSL camera translator">
+      <header class="topbar">
+        <div class="brand">
+          <h1>BSL Text Lens</h1>
+          <p>Two-hand fingerspelling capture with local, private training.</p>
+        </div>
+        <div class="status-pill" aria-live="polite">
+          <span class="dot" id="statusDot"></span>
+          <span id="statusText">Loading hand tracker</span>
+        </div>
+      </header>
+
+      <div class="camera-wrap">
+        <video id="video" playsinline muted></video>
+        <canvas id="overlay"></canvas>
+        <div class="camera-empty" id="cameraEmpty">
+          <div>
+            <strong>Camera is off</strong>
+            Start the camera, keep both hands in frame, then train a few examples for each BSL letter you use.
+          </div>
+        </div>
+        <div class="live-readout">
+          <div class="letter-row">
+            <div class="letter" id="liveLetter">-</div>
+            <div class="confidence">
+              <b id="confidenceLabel">Confidence 0%</b>
+              <div class="meter" aria-hidden="true"><span id="confidenceMeter"></span></div>
+            </div>
+          </div>
+          <div class="hint" id="liveHint">Waiting for MediaPipe Hands to load. Recognition runs in this browser and stores training samples locally.</div>
+        </div>
+      </div>
+
+      <div class="transport">
+        <button class="button" id="startButton" type="button">Start camera</button>
+        <button class="button secondary" id="addButton" type="button" disabled>Add letter</button>
+        <button class="button secondary" id="spaceButton" type="button">Space</button>
+        <button class="button secondary" id="backspaceButton" type="button">Backspace</button>
+        <button class="button danger" id="clearButton" type="button">Clear text</button>
+      </div>
+    </section>
+
+    <aside class="sidebar">
+      <section class="panel">
+        <h2>Transcript</h2>
+        <div class="field">
+          <label for="transcript">Detected text</label>
+          <textarea id="transcript" spellcheck="true" placeholder="Translated fingerspelling appears here"></textarea>
+        </div>
+        <div class="controls-grid">
+          <button class="button" id="copyButton" type="button">Copy</button>
+          <button class="button secondary" id="downloadButton" type="button">Download .txt</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Recognition</h2>
+        <div class="field">
+          <label>Mode</label>
+          <div class="segmented" role="group" aria-label="Recognition mode">
+            <button class="active" id="modeAuto" type="button">Auto</button>
+            <button id="modeManual" type="button">Manual</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="holdFrames">Auto-add hold frames</label>
+          <input id="holdFrames" type="number" min="8" max="90" value="22">
+        </div>
+        <div class="field">
+          <label for="minConfidence">Minimum confidence</label>
+          <input id="minConfidence" type="number" min="45" max="95" value="72">
+        </div>
+        <div class="sample-stats">
+          <span>Nearest contact: <b id="contactReadout">none</b></span>
+        </div>
+        <p class="fineprint">Auto mode appends a letter after it stays stable long enough. Manual mode only previews; use Add letter to commit.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Train BSL Letters</h2>
+        <div class="sample-stats">
+          <span>Selected: <b id="selectedLetter">A</b></span>
+          <span>Samples: <b id="sampleCount">0</b></span>
+        </div>
+        <div class="trainer-grid" id="trainerGrid" aria-label="Letter trainer"></div>
+        <div class="controls-grid" style="margin-top: 12px;">
+          <button class="button" id="captureButton" type="button" disabled>Start camera first</button>
+          <button class="button secondary" id="deleteSamplesButton" type="button">Delete letter</button>
+        </div>
+        <button class="button secondary" id="resetTrainingButton" type="button" style="width: 100%; margin-top: 10px;">Reset all training</button>
+        <p class="fineprint">Capture starts a 3-second countdown. Static letters save the current pose; J records a short movement sequence. Press C to start the same countdown from the keyboard. Capture 3-5 samples per letter from slightly different angles.</p>
+      </section>
+
+      <section class="panel">
+        <h2>BSL Notes</h2>
+        <ul class="key-list">
+          <li><b>Scope:</b> this prototype focuses on BSL fingerspelling, not full BSL grammar, facial expression, or regional signs.</li>
+          <li><b>Hands:</b> BSL fingerspelling uses two hands. Keep both visible and avoid switching dominant hands mid-word.</li>
+          <li><b>Privacy:</b> camera frames are processed locally. Training data is stored as numeric landmarks in this browser.</li>
+        </ul>
+      </section>
+
+      <div class="toast" id="toast">Ready to start once the tracker finishes loading.</div>
+    </aside>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script>
+    const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+    const STORAGE_KEY = "bsl-text-lens-training-v1";
+    const DYNAMIC_STORAGE_KEY = "bsl-text-lens-dynamic-training-v1";
+    const DYNAMIC_LETTERS = new Set(["J"]);
+    const state = {
+      camera: null,
+      handsReady: false,
+      cameraStarted: false,
+      selectedLetter: "A",
+      mode: "auto",
+      training: loadTraining(),
+      dynamicTraining: loadDynamicTraining(),
+      baselineTraining: {},
+      baselineReady: false,
+      latestVector: null,
+      latestPrediction: null,
+      latestVowelContact: null,
+      canCaptureSample: false,
+      captureTimer: null,
+      sequenceCapture: null,
+      motionBuffer: [],
+      dynamicSuppressFrames: 0,
+      stableLetter: null,
+      stableFrames: 0,
+      cooldown: 0
+    };
+
+    const els = {
+      video: document.getElementById("video"),
+      overlay: document.getElementById("overlay"),
+      cameraEmpty: document.getElementById("cameraEmpty"),
+      statusDot: document.getElementById("statusDot"),
+      statusText: document.getElementById("statusText"),
+      liveLetter: document.getElementById("liveLetter"),
+      confidenceLabel: document.getElementById("confidenceLabel"),
+      confidenceMeter: document.getElementById("confidenceMeter"),
+      liveHint: document.getElementById("liveHint"),
+      startButton: document.getElementById("startButton"),
+      addButton: document.getElementById("addButton"),
+      spaceButton: document.getElementById("spaceButton"),
+      backspaceButton: document.getElementById("backspaceButton"),
+      clearButton: document.getElementById("clearButton"),
+      transcript: document.getElementById("transcript"),
+      copyButton: document.getElementById("copyButton"),
+      downloadButton: document.getElementById("downloadButton"),
+      modeAuto: document.getElementById("modeAuto"),
+      modeManual: document.getElementById("modeManual"),
+      holdFrames: document.getElementById("holdFrames"),
+      minConfidence: document.getElementById("minConfidence"),
+      contactReadout: document.getElementById("contactReadout"),
+      trainerGrid: document.getElementById("trainerGrid"),
+      selectedLetter: document.getElementById("selectedLetter"),
+      sampleCount: document.getElementById("sampleCount"),
+      captureButton: document.getElementById("captureButton"),
+      deleteSamplesButton: document.getElementById("deleteSamplesButton"),
+      resetTrainingButton: document.getElementById("resetTrainingButton"),
+      toast: document.getElementById("toast")
+    };
+
+    const ctx = els.overlay.getContext("2d");
+
+    initTrainer();
+    updateTrainerUi();
+    initHands();
+    bindEvents();
+    flagUnsupportedContext();
+    initBaselineTraining();
+
+    function bindEvents() {
+      els.startButton.addEventListener("click", startCamera);
+      els.addButton.addEventListener("click", () => addPredictedLetter("manual"));
+      els.spaceButton.addEventListener("click", () => appendText(" "));
+      els.backspaceButton.addEventListener("click", () => {
+        els.transcript.value = els.transcript.value.slice(0, -1);
+      });
+      els.clearButton.addEventListener("click", () => {
+        els.transcript.value = "";
+        toast("Transcript cleared.");
+      });
+      els.copyButton.addEventListener("click", async () => {
+        await navigator.clipboard.writeText(els.transcript.value);
+        toast("Transcript copied.");
+      });
+      els.downloadButton.addEventListener("click", downloadTranscript);
+      els.modeAuto.addEventListener("click", () => setMode("auto"));
+      els.modeManual.addEventListener("click", () => setMode("manual"));
+      els.captureButton.addEventListener("click", beginCaptureCountdown);
+      els.deleteSamplesButton.addEventListener("click", deleteSelectedSamples);
+      els.resetTrainingButton.addEventListener("click", resetTraining);
+      window.addEventListener("keydown", (event) => {
+        const target = event.target;
+        const isTyping = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement;
+        if (!isTyping && event.key.toLowerCase() === "c") {
+          event.preventDefault();
+          beginCaptureCountdown();
+        }
+      });
+    }
+
+    function initTrainer() {
+      LETTERS.forEach((letter) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "letter-button";
+        button.textContent = letter;
+        button.setAttribute("aria-label", `Train letter ${letter}`);
+        button.addEventListener("click", () => {
+          state.selectedLetter = letter;
+          updateTrainerUi();
+        });
+        els.trainerGrid.appendChild(button);
+      });
+    }
+
+    function initHands() {
+      if (!window.Hands) {
+        setStatus("error", "Hand tracker failed to load");
+        toast("Could not load MediaPipe Hands. Check the network connection, then reload.");
+        return;
+      }
+
+      const hands = new Hands({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+      });
+      hands.setOptions({
+        maxNumHands: 2,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.72,
+        minTrackingConfidence: 0.64
+      });
+      hands.onResults(onResults);
+      state.hands = hands;
+      state.handsReady = true;
+      setStatus("ready", "Ready for camera");
+      els.liveHint.textContent = "Start the camera, then train a few samples for each BSL letter you want to recognise.";
+      toast("Start the camera, then train a few samples for the letters you want to use.");
+    }
+
+    async function initBaselineTraining() {
+      try {
+        const response = await fetch("assets/baseline-training.json", { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        state.baselineTraining = data.training || {};
+        state.baselineReady = true;
+        updateTrainerUi();
+        toast(`Loaded baseline samples for ${Object.keys(state.baselineTraining).length} static letters. Your captures still take priority.`);
+      } catch (error) {
+        state.baselineTraining = {};
+        state.baselineReady = false;
+        toast("Baseline samples could not be loaded. Your own captured samples will still work.");
+      }
+    }
+
+    async function startCamera() {
+      if (!state.handsReady || state.cameraStarted) return;
+      if (!isCameraContextAllowed()) {
+        showCameraContextWarning();
+        return;
+      }
+      try {
+        state.camera = new Camera(els.video, {
+          onFrame: async () => {
+            await state.hands.send({ image: els.video });
+          },
+          width: 1280,
+          height: 720
+        });
+        await state.camera.start();
+        state.cameraStarted = true;
+        els.cameraEmpty.classList.add("hidden");
+        els.startButton.disabled = true;
+        els.addButton.disabled = false;
+        setCaptureReady(true, `Capture ${state.selectedLetter} in 3s`);
+        setStatus("ready", "Camera running");
+        toast("Choose a letter, press Capture, then put both hands in frame before the countdown finishes.");
+      } catch (error) {
+        setStatus("error", "Camera blocked");
+        toast(`Camera access failed: ${error.name || "permission error"}. Use the localhost URL and allow camera access in the browser prompt.`);
+      }
+    }
+
+    function flagUnsupportedContext() {
+      if (isCameraContextAllowed()) return;
+      setStatus("error", "Open via localhost");
+      els.liveHint.textContent = "Camera access is blocked from this file URL. Use http://127.0.0.1:4173 instead.";
+      toast("This browser will not allow camera access from file://. Open the localhost version to use the translator.");
+    }
+
+    function isCameraContextAllowed() {
+      return window.isSecureContext && location.protocol !== "file:" && Boolean(navigator.mediaDevices?.getUserMedia);
+    }
+
+    function showCameraContextWarning() {
+      setStatus("error", "Camera unavailable");
+      toast("Camera access is blocked in this context. Open http://127.0.0.1:4173 and allow camera access there.");
+    }
+
+    function onResults(results) {
+      resizeCanvas();
+      ctx.clearRect(0, 0, els.overlay.width, els.overlay.height);
+
+      const landmarks = results.multiHandLandmarks || [];
+      const handedness = results.multiHandedness || [];
+      drawHands(landmarks);
+
+      if (landmarks.length < 2) {
+        state.latestVector = null;
+        state.latestPrediction = null;
+        state.latestVowelContact = null;
+        els.contactReadout.textContent = "none";
+        updatePrediction(null, "Show both hands in frame.");
+        return;
+      }
+
+      const handsForAnalysis = orderHands(landmarks, handedness);
+      const vector = makeVector(handsForAnalysis);
+      const vowelContact = detectVowelContact(handsForAnalysis);
+      const motionPoint = makeMotionPoint(handsForAnalysis);
+      rememberMotionPoint(motionPoint);
+      if (state.sequenceCapture) {
+        state.sequenceCapture.frames.push(motionPoint);
+      }
+      state.latestVector = vector;
+      state.latestVowelContact = vowelContact;
+      updateContactReadout(vowelContact);
+      const prediction = classify(vector, vowelContact);
+      state.latestPrediction = prediction;
+      updatePrediction(prediction, prediction ? prediction.hint : "Train letters to enable recognition.");
+      maybeAutoAdd(prediction);
+    }
+
+    function drawHands(landmarks) {
+      landmarks.forEach((hand) => {
+        window.drawConnectors(ctx, hand, HAND_CONNECTIONS, { color: "#38bdf8", lineWidth: 4 });
+        window.drawLandmarks(ctx, hand, { color: "#f8fafc", lineWidth: 2, radius: 4 });
+      });
+    }
+
+    function orderHands(landmarks, handedness) {
+      return landmarks.map((points, index) => ({
+        points,
+        label: handedness[index]?.label || "",
+        wristX: points[0].x
+      })).sort((a, b) => a.wristX - b.wristX);
+    }
+
+    function makeVector(hands) {
+      hands.sort((a, b) => a.wristX - b.wristX);
+      const flat = [];
+      const handScale = hands
+        .slice(0, 2)
+        .reduce((total, hand) => total + (distance(hand.points[0], hand.points[9]) || 1), 0) / 2;
+
+      hands.slice(0, 2).forEach((hand) => {
+        const origin = hand.points[0];
+        const scale = distance(hand.points[0], hand.points[9]) || 1;
+        hand.points.forEach((point) => {
+          flat.push((point.x - origin.x) / scale);
+          flat.push((point.y - origin.y) / scale);
+          flat.push((point.z - origin.z) / scale);
+        });
+      });
+
+      const leftWrist = hands[0].points[0];
+      const rightWrist = hands[1].points[0];
+      const span = distance(leftWrist, rightWrist) || 1;
+      flat.push((rightWrist.x - leftWrist.x) / span);
+      flat.push((rightWrist.y - leftWrist.y) / span);
+      flat.push(span);
+      flat.push(...contactFeatures(hands[0].points, hands[1].points, handScale));
+      return flat;
+    }
+
+    function contactFeatures(a, b, scale) {
+      const indices = [4, 8, 12, 16, 20];
+      const features = [];
+      indices.forEach((i) => {
+        indices.forEach((j) => {
+          features.push(distance(a[i], b[j]) / (scale || 1));
+        });
+      });
+      return features;
+    }
+
+    function makeMotionPoint(hands) {
+      const left = hands[0].points;
+      const right = hands[1].points;
+      const leftWrist = left[0];
+      const rightWrist = right[0];
+      const midX = (leftWrist.x + rightWrist.x) / 2;
+      const midY = (leftWrist.y + rightWrist.y) / 2;
+      const midZ = ((leftWrist.z || 0) + (rightWrist.z || 0)) / 2;
+      const scale = distance(leftWrist, rightWrist) || 1;
+      const indices = [0, 4, 8, 12, 16, 20];
+      const point = [];
+
+      [left, right].forEach((hand) => {
+        indices.forEach((index) => {
+          point.push((hand[index].x - midX) / scale);
+          point.push((hand[index].y - midY) / scale);
+          point.push(((hand[index].z || 0) - midZ) / scale);
+        });
+      });
+
+      return point;
+    }
+
+    function rememberMotionPoint(point) {
+      state.motionBuffer.push(point);
+      if (state.motionBuffer.length > 56) {
+        state.motionBuffer.shift();
+      }
+    }
+
+    function detectVowelContact(hands) {
+      const vowels = [
+        { letter: "A", name: "thumb", index: 4 },
+        { letter: "E", name: "index finger", index: 8 },
+        { letter: "I", name: "middle finger", index: 12 },
+        { letter: "O", name: "ring finger", index: 16 },
+        { letter: "U", name: "little finger", index: 20 }
+      ];
+      const candidates = [];
+
+      for (const active of [0, 1]) {
+        const passive = active === 0 ? 1 : 0;
+        const activeTip = hands[active].points[8];
+        const passiveScale = distance(hands[passive].points[0], hands[passive].points[9]) || 1;
+        vowels.forEach((vowel) => {
+          candidates.push({
+            letter: vowel.letter,
+            name: vowel.name,
+            activeHand: active,
+            distance: distance(activeTip, hands[passive].points[vowel.index]) / passiveScale
+          });
+        });
+      }
+
+      candidates.sort((a, b) => a.distance - b.distance);
+      const best = candidates[0];
+      const runnerUp = candidates[1]?.distance || 1;
+      const closeness = Math.max(0, Math.min(1, (0.42 - best.distance) / 0.32));
+      const separation = Math.max(0, Math.min(1, (runnerUp - best.distance) / 0.16));
+      const confidence = Math.round((closeness * 0.76 + separation * 0.24) * 99);
+      return { ...best, confidence };
+    }
+
+    function updateContactReadout(contact) {
+      if (!contact) {
+        els.contactReadout.textContent = "none";
+        return;
+      }
+      els.contactReadout.textContent = `${contact.letter} / ${contact.name} (${contact.confidence}%)`;
+    }
+
+    function classify(vector, vowelContact) {
+      const dynamicPrediction = classifyDynamicMotion();
+      if (dynamicPrediction && dynamicPrediction.confidence >= 72) {
+        return dynamicPrediction;
+      }
+
+      if (vowelContact && vowelContact.confidence >= 68) {
+        return {
+          letter: vowelContact.letter,
+          confidence: vowelContact.confidence,
+          distance: vowelContact.distance,
+          source: "vowel-contact",
+          hint: `${vowelContact.letter} vowel contact: index finger nearest the ${vowelContact.name}.`
+        };
+      }
+
+      const personalSamples = Object.entries(state.training).flatMap(([letter, vectors]) =>
+        vectors.map((sample) => ({ letter, distance: vectorDistance(vector, sample), weight: 1.15, source: "personal" }))
+      );
+      const baselineSamples = Object.entries(state.baselineTraining).flatMap(([letter, vectors]) =>
+        vectors.map((sample) => ({ letter, distance: vectorDistance(vector, sample), weight: 0.76, source: "baseline" }))
+      );
+      const samples = [...personalSamples, ...baselineSamples];
+      if (!samples.length) {
+        return vowelContact
+          ? {
+              letter: vowelContact.letter,
+              confidence: vowelContact.confidence,
+              distance: vowelContact.distance,
+              source: "vowel-contact-low",
+              hint: `Possible ${vowelContact.letter}: index finger nearest the ${vowelContact.name}.`
+            }
+          : null;
+      }
+      samples.sort((a, b) => a.distance - b.distance);
+      const nearest = samples.slice(0, Math.min(5, samples.length));
+      const scores = new Map();
+      nearest.forEach((sample, index) => {
+        scores.set(sample.letter, (scores.get(sample.letter) || 0) + sample.weight / (sample.distance + .001 + index * .015));
+      });
+      const ranked = [...scores.entries()].sort((a, b) => b[1] - a[1]);
+      const best = ranked[0];
+      const runnerUp = ranked[1]?.[1] || 0;
+      const confidence = Math.min(99, Math.max(0, Math.round(((best[1] - runnerUp) / best[1]) * 100)));
+      if (vowelContact && "AEIOU".includes(vowelContact.letter) && vowelContact.confidence > confidence + 8) {
+        return {
+          letter: vowelContact.letter,
+          confidence: vowelContact.confidence,
+          distance: vowelContact.distance,
+          source: "vowel-contact",
+          hint: `${vowelContact.letter} vowel contact: index finger nearest the ${vowelContact.name}.`
+        };
+      }
+      return {
+        letter: best[0],
+        confidence,
+        distance: nearest[0].distance,
+        source: nearest[0].source === "personal" ? "trained" : "baseline",
+        hint: nearest[0].source === "personal"
+          ? "Hold the sign steady to add it."
+          : "Baseline match. Add your own samples to improve this letter for your hands."
+      };
+    }
+
+    function classifyDynamicMotion() {
+      const samples = state.dynamicTraining.J || [];
+      if (state.dynamicSuppressFrames > 0) {
+        state.dynamicSuppressFrames -= 1;
+        return null;
+      }
+      if (!samples.length || state.motionBuffer.length < 14 || state.sequenceCapture) return null;
+      const motionEnergy = sequenceMotionEnergy(state.motionBuffer.slice(-24));
+      if (motionEnergy < 0.018) return null;
+      const liveSequence = simplifySequence(state.motionBuffer, 24);
+      const ranked = samples
+        .map((sample) => ({ letter: "J", distance: sequenceDistance(liveSequence, sample) }))
+        .sort((a, b) => a.distance - b.distance);
+      const best = ranked[0];
+      const runnerUp = ranked[1]?.distance || best.distance + 0.35;
+      const closeness = Math.max(0, Math.min(1, (0.9 - best.distance) / 0.72));
+      const separation = Math.max(0, Math.min(1, (runnerUp - best.distance) / 0.2));
+      const confidence = Math.round((closeness * 0.82 + separation * 0.18) * 99);
+      return {
+        letter: "J",
+        confidence,
+        distance: best.distance,
+        source: "movement",
+        hint: "J movement matched against your recorded sequence samples."
+      };
+    }
+
+    function sequenceMotionEnergy(sequence) {
+      if (sequence.length < 2) return 0;
+      let total = 0;
+      for (let index = 1; index < sequence.length; index += 1) {
+        total += vectorDistance(sequence[index], sequence[index - 1]);
+      }
+      return total / (sequence.length - 1);
+    }
+
+    function sequenceDistance(a, b) {
+      const rows = a.length;
+      const cols = b.length;
+      const cost = Array.from({ length: rows + 1 }, () => Array(cols + 1).fill(Infinity));
+      cost[0][0] = 0;
+
+      for (let row = 1; row <= rows; row += 1) {
+        for (let col = 1; col <= cols; col += 1) {
+          const pointCost = vectorDistance(a[row - 1], b[col - 1]);
+          cost[row][col] = pointCost + Math.min(cost[row - 1][col], cost[row][col - 1], cost[row - 1][col - 1]);
+        }
+      }
+
+      return cost[rows][cols] / (rows + cols);
+    }
+
+    function simplifySequence(sequence, targetLength) {
+      const clean = sequence.filter(Boolean);
+      if (clean.length <= targetLength) return clean.map((point) => [...point]);
+      const simplified = [];
+      for (let index = 0; index < targetLength; index += 1) {
+        const sourceIndex = Math.round(index * (clean.length - 1) / (targetLength - 1));
+        simplified.push([...clean[sourceIndex]]);
+      }
+      return simplified;
+    }
+
+    function maybeAutoAdd(prediction) {
+      if (state.mode !== "auto" || !prediction) return;
+      const minConfidence = Number(els.minConfidence.value);
+      const holdFrames = Number(els.holdFrames.value);
+
+      if (prediction.confidence < minConfidence) {
+        state.stableLetter = null;
+        state.stableFrames = 0;
+        state.cooldown = Math.max(0, state.cooldown - 1);
+        return;
+      }
+
+      if (state.cooldown > 0) {
+        state.cooldown -= 1;
+        return;
+      }
+
+      if (state.stableLetter === prediction.letter) {
+        state.stableFrames += 1;
+      } else {
+        state.stableLetter = prediction.letter;
+        state.stableFrames = 1;
+      }
+
+      if (state.stableFrames >= holdFrames) {
+        addPredictedLetter("auto");
+        state.stableFrames = 0;
+        state.cooldown = Math.floor(holdFrames * .8);
+      }
+    }
+
+    function addPredictedLetter(source) {
+      const prediction = state.latestPrediction;
+      if (!prediction) {
+        toast("No trained letter is currently detected.");
+        return;
+      }
+      if (prediction.confidence < Number(els.minConfidence.value) && source === "auto") return;
+      appendText(prediction.letter);
+      if (prediction.source === "movement") {
+        state.motionBuffer = [];
+        state.dynamicSuppressFrames = 42;
+        state.stableLetter = null;
+        state.stableFrames = 0;
+        state.cooldown = Math.max(state.cooldown, Number(els.holdFrames.value));
+      }
+      toast(`${prediction.letter} added to transcript.`);
+    }
+
+    function beginCaptureCountdown() {
+      if (!state.cameraStarted) {
+        toast("Start the camera before training a letter.");
+        return;
+      }
+      if (state.captureTimer) return;
+
+      let remaining = 3;
+      setCaptureReady(false, `Capturing in ${remaining}`);
+      toast(`Get both hands ready for ${state.selectedLetter}. Capturing in ${remaining}...`);
+
+      state.captureTimer = window.setInterval(() => {
+        remaining -= 1;
+        if (remaining > 0) {
+          els.captureButton.textContent = `Capturing in ${remaining}`;
+          toast(`Get both hands ready for ${state.selectedLetter}. Capturing in ${remaining}...`);
+          return;
+        }
+
+        window.clearInterval(state.captureTimer);
+        state.captureTimer = null;
+        if (DYNAMIC_LETTERS.has(state.selectedLetter)) {
+          beginMovementRecording(state.selectedLetter);
+        } else {
+          captureSample();
+          setCaptureReady(true, `Capture ${state.selectedLetter} in 3s`);
+        }
+      }, 1000);
+    }
+
+    function beginMovementRecording(letter) {
+      state.sequenceCapture = { letter, frames: [] };
+      setCaptureReady(false, `Recording ${letter}...`);
+      toast(`Recording ${letter} movement. Keep both hands visible.`);
+
+      window.setTimeout(() => {
+        finishMovementRecording();
+      }, 1500);
+    }
+
+    function finishMovementRecording() {
+      if (!state.sequenceCapture) return;
+      const { letter, frames } = state.sequenceCapture;
+      state.sequenceCapture = null;
+      const sequence = simplifySequence(frames, 24);
+
+      if (sequence.length < 10) {
+        toast(`No ${letter} movement saved. Both hands need to stay visible during recording.`);
+        setCaptureReady(true, `Capture ${letter} in 3s`);
+        return;
+      }
+
+      state.dynamicTraining[letter] = state.dynamicTraining[letter] || [];
+      state.dynamicTraining[letter].push(sequence);
+      saveDynamicTraining();
+      updateTrainerUi();
+      toast(`Captured movement sample ${state.dynamicTraining[letter].length} for ${letter}.`);
+      setCaptureReady(true, `Capture ${letter} in 3s`);
+    }
+
+    function captureSample() {
+      if (!state.latestVector) {
+        toast("No sample captured. Both hands were not visible when the countdown finished.");
+        return;
+      }
+      const letter = state.selectedLetter;
+      state.training[letter] = state.training[letter] || [];
+      state.training[letter].push([...state.latestVector]);
+      saveTraining();
+      updateTrainerUi();
+      toast(`Captured sample ${state.training[letter].length} for ${letter}.`);
+    }
+
+    function setCaptureReady(isReady, label) {
+      state.canCaptureSample = isReady;
+      els.captureButton.disabled = !isReady;
+      els.captureButton.textContent = label;
+      els.captureButton.title = isReady
+        ? `Start a countdown to save a ${state.selectedLetter} training sample`
+        : "Capture countdown is running";
+    }
+
+    function deleteSelectedSamples() {
+      delete state.training[state.selectedLetter];
+      delete state.dynamicTraining[state.selectedLetter];
+      saveTraining();
+      saveDynamicTraining();
+      updateTrainerUi();
+      toast(`Deleted samples for ${state.selectedLetter}.`);
+    }
+
+    function resetTraining() {
+      state.training = {};
+      state.dynamicTraining = {};
+      saveTraining();
+      saveDynamicTraining();
+      updateTrainerUi();
+      toast("All training samples deleted.");
+    }
+
+    function updatePrediction(prediction, hint) {
+      if (!prediction) {
+        els.liveLetter.textContent = "-";
+        els.confidenceLabel.textContent = "Confidence 0%";
+        els.confidenceMeter.style.width = "0%";
+        els.liveHint.textContent = hint;
+        return;
+      }
+      els.liveLetter.textContent = prediction.letter;
+      els.confidenceLabel.textContent = `Confidence ${prediction.confidence}%`;
+      els.confidenceMeter.style.width = `${prediction.confidence}%`;
+      els.liveHint.textContent = hint;
+    }
+
+    function updateTrainerUi() {
+      els.selectedLetter.textContent = state.selectedLetter;
+      const staticCount = (state.training[state.selectedLetter] || []).length;
+      const motionCount = (state.dynamicTraining[state.selectedLetter] || []).length;
+      const baselineCount = (state.baselineTraining[state.selectedLetter] || []).length;
+      els.sampleCount.textContent = DYNAMIC_LETTERS.has(state.selectedLetter)
+        ? `${motionCount} motion`
+        : baselineCount
+          ? `${staticCount} + ${baselineCount} base`
+          : staticCount;
+      if (state.cameraStarted && !state.captureTimer) {
+        setCaptureReady(true, `Capture ${state.selectedLetter} in 3s`);
+      }
+      [...els.trainerGrid.children].forEach((button) => {
+        const letter = button.textContent;
+        const hasSamples = Boolean(state.training[letter]?.length || state.dynamicTraining[letter]?.length || state.baselineTraining[letter]?.length);
+        button.classList.toggle("selected", letter === state.selectedLetter);
+        button.classList.toggle("has-samples", hasSamples);
+        button.title = `${letter}: ${state.training[letter]?.length || 0} static, ${state.dynamicTraining[letter]?.length || 0} motion, ${state.baselineTraining[letter]?.length || 0} baseline`;
+      });
+    }
+
+    function setMode(mode) {
+      state.mode = mode;
+      els.modeAuto.classList.toggle("active", mode === "auto");
+      els.modeManual.classList.toggle("active", mode === "manual");
+      state.stableLetter = null;
+      state.stableFrames = 0;
+      toast(mode === "auto" ? "Auto mode enabled." : "Manual mode enabled.");
+    }
+
+    function appendText(text) {
+      const start = els.transcript.selectionStart ?? els.transcript.value.length;
+      const end = els.transcript.selectionEnd ?? els.transcript.value.length;
+      els.transcript.value = els.transcript.value.slice(0, start) + text + els.transcript.value.slice(end);
+      const caret = start + text.length;
+      els.transcript.setSelectionRange(caret, caret);
+    }
+
+    function downloadTranscript() {
+      const blob = new Blob([els.transcript.value], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "bsl-transcript.txt";
+      link.click();
+      URL.revokeObjectURL(url);
+      toast("Transcript download started.");
+    }
+
+    function resizeCanvas() {
+      const rect = els.overlay.getBoundingClientRect();
+      const width = Math.max(1, Math.floor(rect.width));
+      const height = Math.max(1, Math.floor(rect.height));
+      if (els.overlay.width !== width || els.overlay.height !== height) {
+        els.overlay.width = width;
+        els.overlay.height = height;
+      }
+    }
+
+    function setStatus(type, text) {
+      els.statusDot.classList.toggle("ready", type === "ready");
+      els.statusDot.classList.toggle("error", type === "error");
+      els.statusText.textContent = text;
+    }
+
+    function toast(message) {
+      els.toast.textContent = message;
+    }
+
+    function loadTraining() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+      } catch {
+        return {};
+      }
+    }
+
+    function saveTraining() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.training));
+    }
+
+    function loadDynamicTraining() {
+      try {
+        return JSON.parse(localStorage.getItem(DYNAMIC_STORAGE_KEY)) || {};
+      } catch {
+        return {};
+      }
+    }
+
+    function saveDynamicTraining() {
+      localStorage.setItem(DYNAMIC_STORAGE_KEY, JSON.stringify(state.dynamicTraining));
+    }
+
+    function distance(a, b) {
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      const dz = (a.z || 0) - (b.z || 0);
+      return Math.hypot(dx, dy, dz);
+    }
+
+    function vectorDistance(a, b) {
+      const length = Math.min(a.length, b.length);
+      let total = 0;
+      for (let index = 0; index < length; index += 1) {
+        const delta = a[index] - b[index];
+        total += delta * delta;
+      }
+      return Math.sqrt(total / length);
+    }
+  </script>
+</body>
+</html>
